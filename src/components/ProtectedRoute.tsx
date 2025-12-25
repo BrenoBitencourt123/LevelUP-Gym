@@ -42,12 +42,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (activeObjective?.status === "concluido" && !activeObjective.rewardClaimed && !isObjectiveCompletionRoute) {
-    return <Navigate to="/objetivo/concluido" replace />;
-  }
+  if (onboardingComplete) {
+    if (activeObjective?.status === "concluido" && !activeObjective.rewardClaimed && !isObjectiveCompletionRoute) {
+      return <Navigate to="/objetivo/concluido" replace />;
+    }
 
-  if (!hasActiveObjective() && !isObjectiveRoute) {
-    return <Navigate to="/objetivo" replace />;
+    if (!hasActiveObjective() && !isObjectiveRoute) {
+      return <Navigate to="/objetivo" replace />;
+    }
   }
 
   return <>{children}</>;
