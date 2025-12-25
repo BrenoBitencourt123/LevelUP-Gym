@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { updateLocalState } from "@/lib/appState";
 import { createAndActivateObjective } from "@/lib/objectiveState";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
 import type { ObjectiveType } from "@/lib/objectives";
@@ -115,6 +116,13 @@ const ObjectiveOnboarding = () => {
       trainingDays: trainingDaysValue,
       trainingLevel: trainingLevel === "iniciante" ? "iniciante" : "intermediario",
     });
+    updateLocalState((state) => ({
+      ...state,
+      profile: {
+        ...state.profile,
+        onboardingComplete: true,
+      },
+    }));
     triggerSync();
     navigate("/", { replace: true });
   };

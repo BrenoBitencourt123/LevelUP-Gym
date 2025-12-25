@@ -12,7 +12,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const onboardingComplete = isOnboardingComplete();
   const isOnboardingRoute = location.pathname.startsWith('/onboarding');
-  const isObjectiveRoute = location.pathname.startsWith('/objetivo');
   const isObjectiveCompletionRoute = location.pathname.startsWith('/objetivo/concluido');
   const activeObjective = getActiveObjective();
 
@@ -45,10 +44,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (onboardingComplete) {
     if (activeObjective?.status === "concluido" && !activeObjective.rewardClaimed && !isObjectiveCompletionRoute) {
       return <Navigate to="/objetivo/concluido" replace />;
-    }
-
-    if (!hasActiveObjective() && !isObjectiveRoute) {
-      return <Navigate to="/objetivo" replace />;
     }
   }
 
