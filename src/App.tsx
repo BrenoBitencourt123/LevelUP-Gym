@@ -23,6 +23,8 @@ import Login from "./pages/Login";
 import RestDay from "./pages/RestDay";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import ObjectiveOnboarding from "./pages/ObjectiveOnboarding";
+import ObjectiveCompletion from "./pages/ObjectiveCompletion";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
             
             {/* Protected routes */}
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/objetivo" element={<ProtectedRoute><ObjectiveOnboarding /></ProtectedRoute>} />
+            <Route path="/objetivo/concluido" element={<ProtectedRoute><ObjectiveCompletion /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/treino" element={<ProtectedRoute><Treino /></ProtectedRoute>} />
             <Route path="/treino/ajustar" element={<ProtectedRoute><AjustarPlano /></ProtectedRoute>} />

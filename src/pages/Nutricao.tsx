@@ -18,12 +18,17 @@ import EditFoodModal from "@/components/nutrition/EditFoodModal";
 import GoalsExplainModal from "@/components/nutrition/GoalsExplainModal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
+import EducationModal from "@/components/EducationModal";
+import { getActiveObjective } from "@/lib/objectiveState";
+import { getObjectiveNutritionStrategy, type EducationKey } from "@/lib/objectives";
+import { applyQuickNutritionSetup } from "@/lib/nutritionStrategy";
 
 const Nutricao = () => {
   const navigate = useNavigate();
   const triggerSync = useSyncTrigger();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [educationKey, setEducationKey] = useState<EducationKey | null>(null);
   const [editingItem, setEditingItem] = useState<{
     mealId: string;
     entryId: string;
@@ -36,6 +41,8 @@ const Nutricao = () => {
   const today = getNutritionToday();
   const dietExists = hasDietSaved();
   const nutritionCompleted = isNutritionCompletedToday();
+  const objective = getActiveObjective();
+  const strategy = objective ? getObjectiveNutritionStrategy(objective.type) : null;
 
   // Calcula totais CONSUMIDOS do dia
   const consumedTotals = useMemo(() => {
@@ -153,6 +160,14 @@ const Nutricao = () => {
     toast.success("Checklist do dia resetado");
   };
 
+  const handleQuickSetup = () => {
+    if (!objective) return;
+    applyQuickNutritionSetup(objective.type);
+    setRefreshKey(k => k + 1);
+    toast.success("Metas ajustadas com base no seu objetivo");
+    triggerSync();
+  };
+
   // Critério para permitir concluir a nutrição:
   // Jantar (última refeição) deve estar com "Check!" (todos planejados consumidos)
   const jantarComplete = isMealComplete("jantar");
@@ -175,6 +190,25 @@ const Nutricao = () => {
       <div className="relative z-10 max-w-md mx-auto px-4 pt-6">
         {/* Header */}
         <h1 className="text-2xl font-bold text-foreground mb-6">Nutrição</h1>
+
+
+        {strategy && (
+          <div className="card-glass p-4 mb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Estrategia atual</p>
+                <p className="text-lg font-semibold text-foreground">{strategy.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">{strategy.description}</p>
+              </div>
+              <button
+                onClick={() => setEducationKey("objective-strategy")}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                <HelpCircle size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Card 1: Meta diária */}
         <div className="card-glass p-4 mb-4">
@@ -245,7 +279,15 @@ const Nutricao = () => {
         {/* Card 2: Refeições de hoje */}
         <div className="card-glass p-4 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Refeições de hoje</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-foreground">Refeições de hoje</h2>
+              <button
+                onClick={() => setEducationKey("nutrition-logging")}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                <HelpCircle size={14} />
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleResetDay}
@@ -276,6 +318,13 @@ const Nutricao = () => {
                 <Plus size={18} />
                 <span className="font-medium">Criar minha dieta</span>
               </Link>
+              <button
+                onClick={handleQuickSetup}
+                className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl border border-border/60 text-muted-foreground hover:bg-muted/30 transition-colors"
+              >
+                <Check size={16} />
+                <span className="font-medium">Config rapida</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -402,6 +451,14 @@ const Nutricao = () => {
         open={showGoalsModal}
         onClose={() => setShowGoalsModal(false)}
       />
+
+      {educationKey && (
+        <EducationModal
+          open={Boolean(educationKey)}
+          onClose={() => setEducationKey(null)}
+          contentKey={educationKey}
+        />
+      )}
     </div>
   );
 };

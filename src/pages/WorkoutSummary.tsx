@@ -14,6 +14,7 @@ import { markWorkoutCompletedThisWeek } from "@/lib/appState";
 import { getWorkoutOfDay } from "@/lib/weekUtils";
 import BottomNav from "@/components/BottomNav";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
+import { refreshActiveObjectiveProgress } from "@/lib/objectiveState";
 
 const XP_PER_WORKOUT = 150;
 
@@ -66,6 +67,7 @@ const WorkoutSummary = () => {
 
   const handleConcluir = () => {
     completeTreinoDoDia(XP_PER_WORKOUT);
+    refreshActiveObjectiveProgress();
     triggerSync(); // Sync after completing workout
     navigate("/");
   };

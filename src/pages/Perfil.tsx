@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { ArrowLeft, Award, Flame, Dumbbell, TrendingUp, Scale, Edit2, ChevronRight, Cloud, CloudOff, RefreshCw, LogOut, Download, Upload, Check, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
-import LevelBadge from "@/components/profile/LevelBadge";
+import AvatarFrame from "@/components/AvatarFrame";
 import XPBar from "@/components/XPBar";
 import { Button } from "@/components/ui/button";
 import { getProfile, getAchievements, getTotalWorkoutsCompleted, getTotalVolume } from "@/lib/storage";
@@ -154,7 +154,7 @@ const Perfil = () => {
 
         {/* Avatar & Level */}
         <div className="flex flex-col items-center mb-6">
-          <LevelBadge level={profile.level} avatarUrl={profile.avatarUrl} size={128} />
+          <AvatarFrame level={profile.level} avatarUrl={profile.avatarUrl} size="md" />
           <h2 className="mt-4 text-xl font-bold text-foreground">Nível {profile.level}</h2>
           <p className="text-sm text-muted-foreground">
             {user ? user.email : 'Atleta Dedicado'}

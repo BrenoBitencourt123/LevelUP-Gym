@@ -27,6 +27,7 @@ import {
 } from "@/lib/storage";
 import { foods, FoodItem } from "@/data/foods";
 import { toast } from "sonner";
+import { refreshActiveObjectiveProgress } from "@/lib/objectiveState";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
 
 const Progresso = () => {
@@ -105,6 +106,7 @@ const Progresso = () => {
       return;
     }
     saveWeight(weight);
+    refreshActiveObjectiveProgress();
     setShowWeightModal(false);
     setNewWeight("");
     toast.success("Peso registrado!");

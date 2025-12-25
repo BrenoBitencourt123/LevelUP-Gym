@@ -71,3 +71,12 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Objective campaigns (manual test)
+
+1. Log in and finish the base onboarding if prompted.
+2. If no active objective exists, complete the objective setup at `/objetivo`.
+3. On Home, confirm the "Objetivo ativo" card and mission list update.
+4. Log a workout and nutrition day to see missions update.
+5. Register weight in `Progresso` to advance objective progress.
+6. When the objective completes, claim the reward and choose a new objective.

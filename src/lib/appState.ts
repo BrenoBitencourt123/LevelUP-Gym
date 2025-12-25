@@ -7,6 +7,7 @@ import {
   DEFAULT_WORKOUT_SCHEDULE,
   type WorkoutSchedule,
 } from './storage';
+import type { ObjectiveCampaignState } from "@/lib/objectives";
 
 // ============= SET DATA TYPE =============
 
@@ -216,6 +217,7 @@ export interface AppState {
   nutrition: AppStateNutrition;
   bodyweight: AppStateBodyweight;
   achievements: AppStateAchievements;
+  objective?: ObjectiveCampaignState;
   treinoProgresso?: TreinoProgresso;
   quests?: Quests;
   progressionSuggestions?: ProgressionSuggestions;
@@ -364,6 +366,11 @@ function migrateFromLegacy(): AppState {
     achievements: {
       unlocked: [],
       updatedAt: Date.now(),
+    },
+    objective: {
+      history: [],
+      dailyMissions: {},
+      workoutCheckIns: {},
     },
     treinoProgresso,
     quests,
@@ -535,6 +542,11 @@ export function createNewUserState(): AppState {
       unlocked: [],
       updatedAt: Date.now(),
     },
+    objective: {
+      history: [],
+      dailyMissions: {},
+      workoutCheckIns: {},
+    },
     treinoProgresso: {},
     quests: {
       treinoDoDiaDone: false,
@@ -567,6 +579,34 @@ export function markWorkoutCompletedThisWeek(
 
   state.weeklyCompletions[weekStart][workoutId] = {
     completedAt: new Date().toISOString(),
+    xpGained,
+    setsCompleted,
+    totalVolume,
+  };
+
+  setLocalState(state);
+}
+
+export function markWorkoutCompletedAtDate(
+  workoutId: string,
+  xpGained: number,
+  setsCompleted: number,
+  totalVolume: number,
+  date: Date
+): void {
+  const state = getLocalState();
+  const weekStart = getWeekStart(date);
+
+  if (!state.weeklyCompletions) {
+    state.weeklyCompletions = {};
+  }
+
+  if (!state.weeklyCompletions[weekStart]) {
+    state.weeklyCompletions[weekStart] = {};
+  }
+
+  state.weeklyCompletions[weekStart][workoutId] = {
+    completedAt: date.toISOString(),
     xpGained,
     setsCompleted,
     totalVolume,

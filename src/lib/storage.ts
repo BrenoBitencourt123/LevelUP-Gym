@@ -1036,6 +1036,17 @@ export function saveWorkoutCompleted(workoutId: string, totalVolume: number): vo
   save(STORAGE_KEYS.WORKOUTS_COMPLETED, completed);
 }
 
+export function saveWorkoutCompletedAt(workoutId: string, totalVolume: number, dateKeyOrIso: string): void {
+  const completed = getWorkoutsCompleted();
+  const timestamp = dateKeyOrIso.includes("T") ? dateKeyOrIso : `${dateKeyOrIso}T12:00:00.000Z`;
+  completed.unshift({
+    workoutId,
+    timestamp,
+    totalVolume,
+  });
+  save(STORAGE_KEYS.WORKOUTS_COMPLETED, completed);
+}
+
 export function getTotalWorkoutsCompleted(): number {
   return getWorkoutsCompleted().length;
 }

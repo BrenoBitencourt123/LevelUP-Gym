@@ -1,9 +1,12 @@
-import { ArrowLeft, Play, RotateCcw } from "lucide-react";
+import { ArrowLeft, Play, RotateCcw, HelpCircle } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useState } from "react";
 import ExerciseCard from "@/components/ExerciseCard";
 import BottomNav from "@/components/BottomNav";
 import { getUserWorkout, saveTreinoHoje, clearTreinoProgress } from "@/lib/storage";
+import EducationModal from "@/components/EducationModal";
+import { getActiveObjective } from "@/lib/objectiveState";
+import type { EducationKey } from "@/lib/objectives";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +23,8 @@ const WorkoutDetail = () => {
   const workout = getUserWorkout(treinoId || "");
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [educationKey, setEducationKey] = useState<EducationKey | null>(null);
+  const objective = getActiveObjective();
   
   if (!workout) {
     return (
@@ -68,6 +73,17 @@ const WorkoutDetail = () => {
             <div>
               <h1 className="text-2xl font-bold text-foreground">{workout.titulo}</h1>
               <p className="text-sm text-muted-foreground">{workout.exercicios.length} exercícios</p>
+              {objective && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">Foco: {objective.title}</span>
+                  <button
+                    onClick={() => setEducationKey("workout-why")}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -127,6 +143,14 @@ const WorkoutDetail = () => {
 
       {/* Bottom Navigation */}
       <BottomNav />
+
+      {educationKey && (
+        <EducationModal
+          open={Boolean(educationKey)}
+          onClose={() => setEducationKey(null)}
+          contentKey={educationKey}
+        />
+      )}
     </div>
   );
 };

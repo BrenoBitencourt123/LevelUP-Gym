@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import BottomNav from "@/components/BottomNav";
-import LevelBadge from "@/components/profile/LevelBadge";
+import AvatarFrame from "@/components/AvatarFrame";
 import { getProfile, saveProfile } from "@/lib/storage";
 
 const Settings = () => {
@@ -82,11 +82,10 @@ const Settings = () => {
           <h2 className="text-sm font-medium text-muted-foreground mb-3">Conta</h2>
 
           <div className="flex items-center gap-4 mb-4">
-            <LevelBadge
+            <AvatarFrame
               level={profile.level}
               avatarUrl={profile.avatarUrl}
-              size={72}
-              showLevelPill={false}
+              size="sm"
             />
             <div>
               <p className="text-sm font-medium text-foreground">Foto de perfil</p>

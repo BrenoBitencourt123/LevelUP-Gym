@@ -11,6 +11,7 @@ import { getFoodById } from "@/data/foods";
 import { useMemo } from "react";
 import BottomNav from "@/components/BottomNav";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
+import { refreshActiveObjectiveProgress } from "@/lib/objectiveState";
 
 const XP_BASE = 80;
 const XP_BONUS = 20; // Extra se bater proteína e calorias
@@ -62,6 +63,7 @@ const NutritionSummary = () => {
   const handleConcluir = () => {
     if (!alreadyCompleted) {
       completeNutritionToday(xpGained);
+      refreshActiveObjectiveProgress();
     }
     triggerSync(); // Sync after completing nutrition
     navigate("/");

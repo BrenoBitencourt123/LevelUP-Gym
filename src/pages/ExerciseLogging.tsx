@@ -19,6 +19,8 @@ import {
   ProgressionSuggestion,
 } from "@/lib/storage";
 import { toast } from "sonner";
+import EducationModal from "@/components/EducationModal";
+import type { EducationKey } from "@/lib/objectives";
 
 const ExerciseLogging = () => {
   const { treinoId, exercicioId } = useParams();
@@ -36,6 +38,7 @@ const ExerciseLogging = () => {
   const [workSets, setWorkSets] = useState<SetProgress[]>([]);
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [educationKey, setEducationKey] = useState<EducationKey | null>(null);
 
   // Initialize from storage or defaults, with suggested load support
   useEffect(() => {
@@ -215,7 +218,10 @@ const ExerciseLogging = () => {
             </Link>
             <h1 className="text-2xl font-bold text-foreground">{exercise.nome}</h1>
           </div>
-          <button className="text-primary text-sm font-medium hover:underline">
+          <button
+            onClick={() => setEducationKey("progressive-overload")}
+            className="text-primary text-sm font-medium hover:underline"
+          >
             Por quê?
           </button>
         </div>
@@ -402,6 +408,14 @@ const ExerciseLogging = () => {
 
       {/* Bottom Nav */}
       <BottomNav />
+
+      {educationKey && (
+        <EducationModal
+          open={Boolean(educationKey)}
+          onClose={() => setEducationKey(null)}
+          contentKey={educationKey}
+        />
+      )}
     </div>
   );
 };

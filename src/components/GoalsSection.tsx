@@ -1,4 +1,5 @@
-﻿import { Dumbbell, Apple, Scale, Check } from "lucide-react";
+import { Dumbbell, Apple, Scale, Check, HelpCircle } from "lucide-react";
+import type { EducationKey } from "@/lib/objectives";
 
 interface Goal {
   id: string;
@@ -6,10 +7,14 @@ interface Goal {
   label: string;
   xp: number;
   completed?: boolean;
+  explainKey?: EducationKey;
+  canToggle?: boolean;
 }
 
 interface GoalsSectionProps {
   goals: Goal[];
+  onExplain?: (key: EducationKey) => void;
+  onToggle?: (goalId: string) => void;
 }
 
 const iconMap = {
@@ -18,7 +23,7 @@ const iconMap = {
   weight: Scale,
 };
 
-const GoalsSection = ({ goals }: GoalsSectionProps) => {
+const GoalsSection = ({ goals, onExplain, onToggle }: GoalsSectionProps) => {
   const completedCount = goals.filter((goal) => goal.completed).length;
   const progress = goals.length > 0 ? (completedCount / goals.length) * 100 : 0;
 
@@ -26,9 +31,9 @@ const GoalsSection = ({ goals }: GoalsSectionProps) => {
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Missões de hoje</h2>
+          <h2 className="text-lg font-semibold text-foreground">Missoes de hoje</h2>
           <p className="text-xs text-muted-foreground">
-            {completedCount}/{goals.length} concluídas
+            {completedCount}/{goals.length} concluidas
           </p>
         </div>
         <span className="text-xs text-muted-foreground">+XP por objetivo</span>
@@ -47,12 +52,18 @@ const GoalsSection = ({ goals }: GoalsSectionProps) => {
         </div>
         {goals.map((goal) => {
           const Icon = iconMap[goal.icon];
+          const canToggle = Boolean(goal.canToggle && onToggle);
           return (
             <div
               key={goal.id}
               className={`goal-item group ${
-                goal.completed ? "opacity-60" : "hover:bg-muted/30 cursor-pointer"
-              }`}
+                goal.completed ? "opacity-60" : "hover:bg-muted/30"
+              } ${canToggle ? "cursor-pointer" : ""}`}
+              onClick={() => {
+                if (canToggle && onToggle) {
+                  onToggle(goal.id);
+                }
+              }}
             >
               <div className="flex items-center gap-3">
                 {goal.completed ? (
@@ -72,15 +83,28 @@ const GoalsSection = ({ goals }: GoalsSectionProps) => {
                   {goal.label}
                 </span>
               </div>
-              <span
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                  goal.completed
-                    ? "text-muted-foreground border-border/60"
-                    : "text-primary border-primary/40 bg-primary/10"
-                }`}
-              >
-                +{goal.xp} XP
-              </span>
+              <div className="flex items-center gap-2">
+                {goal.explainKey && onExplain && (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onExplain(goal.explainKey!);
+                    }}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                )}
+                <span
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                    goal.completed
+                      ? "text-muted-foreground border-border/60"
+                      : "text-primary border-primary/40 bg-primary/10"
+                  }`}
+                >
+                  +{goal.xp} XP
+                </span>
+              </div>
             </div>
           );
         })}

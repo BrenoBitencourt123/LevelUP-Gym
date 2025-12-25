@@ -1,16 +1,23 @@
-import { Filter, CheckCircle, Calendar } from "lucide-react";
+import { Filter, CheckCircle, Calendar, HelpCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import WorkoutCard from "@/components/WorkoutCard";
 import BottomNav from "@/components/BottomNav";
 import { getUserWorkoutPlan } from "@/lib/storage";
 import { getWorkoutOfDay, getWeekStart } from "@/lib/weekUtils";
 import { getWeeklyCompletions } from "@/lib/appState";
+import { getActiveObjective } from "@/lib/objectiveState";
+import { getObjectiveTrainingProfile, type EducationKey } from "@/lib/objectives";
+import EducationModal from "@/components/EducationModal";
 
 const Treino = () => {
   const userPlan = getUserWorkoutPlan();
   const todayWorkoutId = getWorkoutOfDay();
   const weekStart = getWeekStart();
   const weeklyCompletions = getWeeklyCompletions(weekStart);
+  const objective = getActiveObjective();
+  const trainingProfile = objective ? getObjectiveTrainingProfile(objective.type) : null;
+  const [educationKey, setEducationKey] = useState<EducationKey | null>(null);
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -36,6 +43,26 @@ const Treino = () => {
             </button>
           </div>
         </div>
+
+        {objective && trainingProfile && (
+          <div className="card-glass p-4 mb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Foco atual</p>
+                <p className="text-lg font-semibold text-foreground">{objective.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Volume {trainingProfile.volumeMultiplier.toFixed(2)}x • Cardio {trainingProfile.cardioSuggestionPerWeek}x/sem
+                </p>
+              </div>
+              <button
+                onClick={() => setEducationKey("workout-why")}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Workout Cards */}
         <div className="space-y-4">
@@ -74,6 +101,14 @@ const Treino = () => {
 
       {/* Bottom Navigation */}
       <BottomNav />
+
+      {educationKey && (
+        <EducationModal
+          open={Boolean(educationKey)}
+          onClose={() => setEducationKey(null)}
+          contentKey={educationKey}
+        />
+      )}
     </div>
   );
 };
