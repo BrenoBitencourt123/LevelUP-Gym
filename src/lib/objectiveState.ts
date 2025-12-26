@@ -27,6 +27,7 @@ const DEFAULT_OBJECTIVE_STATE: ObjectiveCampaignState = {
   dailyMissions: {},
   workoutCheckIns: {},
 };
+const WORKOUT_MISSED_XP_PENALTY = 50;
 
 export function getObjectiveCampaignState(): ObjectiveCampaignState {
   const state = getLocalState();
@@ -196,7 +197,7 @@ export function resolveWorkoutCheckInAsDone(
   }));
 }
 
-export function resolveWorkoutCheckInAsMissed(dateKey: string): void {
+export function resolveWorkoutCheckInAsMissed(dateKey: string): { xpLost: number } {
   const resolvedAt = new Date().toISOString();
   const checkIn: WorkoutCheckIn = {
     dateKey,
@@ -204,17 +205,30 @@ export function resolveWorkoutCheckInAsMissed(dateKey: string): void {
     resolvedAt,
   };
 
-  updateLocalState((state) => ({
-    ...state,
-    objective: {
-      ...DEFAULT_OBJECTIVE_STATE,
-      ...state.objective,
-      workoutCheckIns: {
-        ...(state.objective?.workoutCheckIns ?? {}),
-        [dateKey]: checkIn,
+  let xpLost = 0;
+
+  updateLocalState((state) => {
+    const nextXp = Math.max(0, state.progression.xp - WORKOUT_MISSED_XP_PENALTY);
+    xpLost = state.progression.xp - nextXp;
+
+    return {
+      ...state,
+      progression: {
+        ...state.progression,
+        xp: nextXp,
       },
-    },
-  }));
+      objective: {
+        ...DEFAULT_OBJECTIVE_STATE,
+        ...state.objective,
+        workoutCheckIns: {
+          ...(state.objective?.workoutCheckIns ?? {}),
+          [dateKey]: checkIn,
+        },
+      },
+    };
+  });
+
+  return { xpLost };
 }
 
 function hasObjectiveChanged(previous: ActiveObjective, next: ActiveObjective): boolean {

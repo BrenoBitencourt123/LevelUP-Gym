@@ -1,11 +1,8 @@
 ﻿import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Settings, HelpCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import AvatarFrame from "@/components/AvatarFrame";
-import XPBar from "@/components/XPBar";
-import StatsRow from "@/components/StatsRow";
 import GoalsSection from "@/components/GoalsSection";
-import StartWorkoutButton from "@/components/StartWorkoutButton";
 import AchievementsCard from "@/components/AchievementsCard";
 import BottomNav from "@/components/BottomNav";
 import {
@@ -13,6 +10,8 @@ import {
   syncQuestsStatus,
   getAchievements,
   getUserWorkoutPlan,
+  getUserWorkout,
+  saveTreinoHoje,
 } from "@/lib/storage";
 import EducationModal from "@/components/EducationModal";
 import {
@@ -26,6 +25,7 @@ import {
 } from "@/lib/objectiveState";
 import { getObjectiveRemainingLabel, type EducationKey } from "@/lib/objectives";
 import { useSyncTrigger } from "@/hooks/useSyncTrigger";
+import { getWorkoutOfDay, isRestDay } from "@/lib/weekUtils";
 import {
   Dialog,
   DialogContent,
@@ -87,7 +87,8 @@ const getRank = (level: number) => {
 };
 
 const Index = () => {
-  const [profile, setProfile] = useState(getProfile());
+  const navigate = useNavigate();
+  const [, setProfile] = useState(getProfile());
   const [achievements, setAchievements] = useState(getAchievements());
   const [objective, setObjective] = useState(getActiveObjective());
   const [missions, setMissions] = useState(getObjectiveMissionsForToday());
@@ -95,8 +96,11 @@ const Index = () => {
   const [pendingCheckIn, setPendingCheckIn] = useState(getPendingWorkoutCheckIn());
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInWorkoutId, setCheckInWorkoutId] = useState(pendingCheckIn?.workoutId || "");
+  const [missedFeedback, setMissedFeedback] = useState<{ xpLost: number } | null>(null);
   const triggerSync = useSyncTrigger();
-  const rank = getRank(profile.level);
+  const workoutIdOfDay = getWorkoutOfDay();
+  const isRest = isRestDay();
+  const workoutOfDay = workoutIdOfDay ? getUserWorkout(workoutIdOfDay) : null;
 
   useEffect(() => {
     // Sync quests status on mount
@@ -113,6 +117,68 @@ const Index = () => {
       setCheckInWorkoutId(pendingCheckIn.workoutId);
     }
   }, [pendingCheckIn]);
+
+  useEffect(() => {
+    if (pendingCheckIn) {
+      setMissedFeedback(null);
+    }
+  }, [pendingCheckIn]);
+
+  const objectiveCoachLine = useMemo(() => {
+    if (!objective) return "";
+    if (objective.type === "perder_peso") {
+      return "Hoje o foco e consistencia: treino + passos.";
+    }
+    if (objective.type === "ganhar_massa") {
+      return "Hoje o foco e progredir: bate a faixa de reps.";
+    }
+    return "Hoje o foco e manter ritmo e tecnica.";
+  }, [objective]);
+
+  const objectiveProgress = useMemo(() => {
+    if (!objective) {
+      return {
+        kpi: "Faltam --",
+        detail: "Progresso: 0%",
+      };
+    }
+
+    const startWeight = objective.startMetrics.weightKg;
+    const currentWeight = objective.currentMetrics.weightKg;
+    const targetWeight = objective.target.primaryValue;
+
+    const hasWeights =
+      typeof startWeight === "number" &&
+      typeof currentWeight === "number" &&
+      typeof targetWeight === "number";
+
+    if ((objective.type === "perder_peso" || objective.type === "ganhar_massa") && hasWeights) {
+      const totalDelta = Math.abs(startWeight - targetWeight);
+      if (totalDelta > 0) {
+        const remaining =
+          objective.type === "perder_peso"
+            ? Math.max(0, currentWeight - targetWeight)
+            : Math.max(0, targetWeight - currentWeight);
+        const progressValue = Math.max(0, totalDelta - remaining);
+        return {
+          kpi: `Faltam ${remaining.toFixed(1)} kg`,
+          detail: `${progressValue.toFixed(1)} / ${totalDelta.toFixed(1)} kg`,
+        };
+      }
+    }
+
+    if (objective.type === "manutencao") {
+      return {
+        kpi: getObjectiveRemainingLabel(objective),
+        detail: `Progresso: ${objective.progressPercent ?? 0}%`,
+      };
+    }
+
+    return {
+      kpi: getObjectiveRemainingLabel(objective),
+      detail: `Progresso: ${objective.progressPercent ?? 0}%`,
+    };
+  }, [objective]);
 
   const stars = useMemo(
     () =>
@@ -131,8 +197,9 @@ const Index = () => {
   const nextRewardIn = Math.max(1, 3 - (unlockedCount % 3)); // Every 3 achievements
 
   const goals = missions.map((mission) => {
+    const isWeightMission = mission.id === "peso" || mission.id.includes("peso");
     const icon =
-      mission.id === "peso" || mission.id.includes("peso")
+      isWeightMission
         ? ("weight" as const)
         : mission.id.includes("nutricao") || mission.id.includes("alimentacao")
         ? ("nutrition" as const)
@@ -146,19 +213,40 @@ const Index = () => {
       completed: mission.completed,
       explainKey: mission.educationKey,
       canToggle: mission.completionType === "manual",
+      canSelect: isWeightMission,
     };
   });
 
-  const objectiveRemaining = objective ? getObjectiveRemainingLabel(objective) : "";
   const userPlan = getUserWorkoutPlan();
   const XP_PER_WORKOUT = 150;
 
   const handleExplain = (key: EducationKey) => setEducationKey(key);
 
-  const handleToggleMission = (missionId: string) => {
-    toggleObjectiveMission(missionId);
-    setMissions(getObjectiveMissionsForToday());
+  const handleStartWorkout = () => {
+    if (isRest) {
+      navigate("/descanso");
+      return;
+    }
+
+    if (workoutIdOfDay) {
+      saveTreinoHoje({
+        treinoId: workoutIdOfDay,
+        startedAt: new Date().toISOString(),
+      });
+      navigate(`/treino/${workoutIdOfDay}`);
+    }
   };
+
+const handleToggleMission = (missionId: string) => {
+  toggleObjectiveMission(missionId);
+  setMissions(getObjectiveMissionsForToday());
+};
+
+const handleSelectMission = (missionId: string) => {
+  if (missionId === "peso" || missionId.includes("peso")) {
+    navigate("/progresso");
+  }
+};
 
   const handleCheckInDone = () => {
     if (!pendingCheckIn || !checkInWorkoutId) return;
@@ -171,8 +259,10 @@ const Index = () => {
 
   const handleCheckInMissed = () => {
     if (!pendingCheckIn) return;
-    resolveWorkoutCheckInAsMissed(pendingCheckIn.dateKey);
+    const result = resolveWorkoutCheckInAsMissed(pendingCheckIn.dateKey);
     setPendingCheckIn(null);
+    setProfile(getProfile());
+    setMissedFeedback({ xpLost: result.xpLost });
     triggerSync();
   };
 
@@ -221,73 +311,80 @@ const Index = () => {
         </div>
 
         {/* Hero card */}
-        <Link to="/perfil" className="block mb-6 reveal-up stagger-1">
-          <div className="card-glass relative overflow-hidden p-5">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-transparent to-transparent" />
-            <div className="absolute -right-6 -top-8 w-28 h-28 rounded-full bg-primary/20 blur-2xl" />
-            <div className="relative flex items-center gap-4">
-              <div className="shrink-0">
-                <AvatarFrame level={profile.level} avatarUrl={profile.avatarUrl} size="sm" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Objetivo ativo
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-xl font-semibold text-foreground text-gradient">
-                        {objective?.title ?? "Objetivo"}
-                      </h1>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setEducationKey("objective-realistic-goals");
-                        }}
-                        className="text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <HelpCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Nivel do objetivo {objective?.objectiveLevel ?? 1} - {objective?.progressPercent ?? 0}%
-                    </p>
-                  </div>
-                  <span
-                    className={`text-[10px] uppercase tracking-[0.12em] px-2.5 py-1 rounded-full border ${rank.tone}`}
+        <div className="card-glass relative overflow-hidden p-5 mb-6 reveal-up stagger-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-transparent to-transparent" />
+          <div className="absolute -right-6 -top-8 w-28 h-28 rounded-full bg-primary/20 blur-2xl" />
+          <div className="relative">
+            {objective ? (
+              <>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  OBJETIVO ATIVO
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <h1 className="text-2xl font-semibold text-foreground text-gradient">
+                    {objective.title}
+                  </h1>
+                  <button
+                    onClick={() => setEducationKey("objective-realistic-goals")}
+                    className="text-muted-foreground hover:text-primary transition-colors"
                   >
-                    Elo {rank.name}
-                  </span>
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="mt-3">
+
+                <p className="text-3xl font-semibold text-foreground mt-4">
+                  {objectiveProgress.kpi}
+                </p>
+                {objectiveCoachLine && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {objectiveCoachLine}
+                  </p>
+                )}
+
+                <div className="mt-4">
                   <div className="h-2 rounded-full bg-muted/70 overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${objective?.progressPercent ?? 0}%` }}
+                      style={{ width: `${objective.progressPercent ?? 0}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">{objectiveRemaining}</p>
-                </div>
-                <div className="mt-3">
-                  <p className="text-[11px] text-muted-foreground">
-                    Conta: Lv {profile.level} ({profile.xpAtual}/{profile.xpMeta} XP)
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {objectiveProgress.detail}
                   </p>
                 </div>
-                <div className="mt-3">
-                  <XPBar current={profile.xpAtual} max={profile.xpMeta} showChevron={false} compact />
-                </div>
-                <div className="mt-4">
-                  <StatsRow
-                    streak={profile.streakDias}
-                    multiplier={profile.multiplier}
-                    shields={profile.shields}
-                  />
-                </div>
-              </div>
-            </div>
+
+                <button
+                  onClick={handleStartWorkout}
+                  className="w-full cta-button cta-primary mt-4"
+                >
+                  <span className="text-primary-foreground">
+                    {isRest
+                      ? "Dia de descanso - ver plano"
+                      : `Comecar treino ${workoutOfDay?.titulo ?? "de hoje"}`}
+                  </span>
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  OBJETIVO ATIVO
+                </p>
+                <h1 className="text-2xl font-semibold text-foreground mt-1">
+                  Sem objetivo ativo
+                </h1>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Defina uma campanha para destravar suas missoes.
+                </p>
+                <button
+                  onClick={() => navigate("/objetivo")}
+                  className="w-full cta-button cta-primary mt-4"
+                >
+                  <span className="text-primary-foreground">Escolher objetivo</span>
+                </button>
+              </>
+            )}
           </div>
-        </Link>
+        </div>
 
         {pendingCheckIn && (
           <div className="card-glass p-4 mb-4 reveal-up stagger-2">
@@ -326,14 +423,33 @@ const Index = () => {
           </div>
         )}
 
+        {!pendingCheckIn && missedFeedback && (
+          <div className="card-glass p-4 mb-4 reveal-up stagger-2">
+            <p className="text-sm text-foreground">
+              {missedFeedback.xpLost > 0
+                ? `Sem escudo hoje: -${missedFeedback.xpLost} XP.`
+                : "Sem escudo hoje. XP ja estava no zero."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Ta tudo bem falhar um dia. O importante e voltar hoje.
+            </p>
+            <Link
+              to="/treino"
+              className="text-xs text-primary hover:text-primary/80 mt-2 inline-flex"
+            >
+              Comecar treino de hoje
+            </Link>
+          </div>
+        )}
+
         {/* Goals Section */}
         <div className="mb-4 reveal-up stagger-2">
-          <GoalsSection goals={goals} onExplain={handleExplain} onToggle={handleToggleMission} />
-        </div>
-
-        {/* Start Workout CTA */}
-        <div className="mb-4 reveal-up stagger-3">
-          <StartWorkoutButton />
+          <GoalsSection
+            goals={goals}
+            onExplain={handleExplain}
+            onToggle={handleToggleMission}
+            onSelect={handleSelectMission}
+          />
         </div>
 
         {/* Achievements Card - now clickable */}

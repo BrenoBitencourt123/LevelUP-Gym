@@ -23,6 +23,10 @@ export interface ActiveObjective {
   type: ObjectiveType;
   title: string;
   startAt: string;
+  startDateISO: string;
+  durationWeeks: number;
+  startWeightKg: number;
+  targetWeightKg: number;
   target: ObjectiveTarget;
   startMetrics: ObjectiveMetrics;
   currentMetrics: ObjectiveMetrics;
@@ -31,6 +35,7 @@ export interface ActiveObjective {
   status: ObjectiveStatus;
   rewardXp: number;
   suggestedWeeks: number;
+  weighIns: { weekIndex: number; dateISO: string; weightKg: number }[];
   completedAt?: string;
   rewardClaimed?: boolean;
   badgeId?: string;
@@ -200,6 +205,10 @@ export function createObjective(input: ObjectiveCreationInput): ActiveObjective 
     type: input.type,
     title: getObjectiveTitle(input.type),
     startAt,
+    startDateISO: startAt,
+    durationWeeks: suggestedWeeks,
+    startWeightKg: input.startWeightKg,
+    targetWeightKg: input.targetWeightKg ?? input.startWeightKg,
     target,
     startMetrics: {
       weightKg: input.startWeightKg,
@@ -216,6 +225,7 @@ export function createObjective(input: ObjectiveCreationInput): ActiveObjective 
     status: "ativo",
     rewardXp,
     suggestedWeeks,
+    weighIns: [],
     badgeId: getObjectiveBadgeId(input.type),
     trainingDays: input.trainingDays,
     trainingLevel: input.trainingLevel,

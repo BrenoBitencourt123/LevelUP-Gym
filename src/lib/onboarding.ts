@@ -16,6 +16,8 @@ export type OnboardingInput = {
   weightKg: number;
   activityLevel: OnboardingActivity;
   trainingDays: number;
+  targetWeightKg?: number;
+  weeksTarget?: number;
 };
 
 export function getAgeFromBirthDate(birthDate: string): number {
@@ -100,7 +102,13 @@ export function calculateNutritionTargets(input: OnboardingInput): {
 } {
   const bmr = calculateBmr(input.sex, input.weightKg, input.heightCm, input.age);
   const tdee = bmr * getActivityFactor(input.activityLevel);
-  const kcal = Math.round(tdee * (1 + getGoalAdjustment(input.goal)));
+  const trainingBoost = getTrainingDayBoost(input.trainingDays);
+  const baseKcal = tdee + trainingBoost;
+  const targetAdjustment = getTargetDailyAdjustment(input);
+  const kcalBase = targetAdjustment !== null
+    ? baseKcal + targetAdjustment
+    : baseKcal * (1 + getGoalAdjustment(input.goal));
+  const kcal = Math.max(1200, Math.round(kcalBase));
 
   const proteinG = Math.round(input.weightKg * getProteinPerKg(input.goal));
   const fatG = Math.round(input.weightKg * 0.8);
@@ -116,6 +124,39 @@ export function calculateNutritionTargets(input: OnboardingInput): {
     cTarget: carbsG,
     gTarget: fatG,
   };
+}
+
+const KCAL_PER_KG = 7700;
+const SAFE_LOSS_KG_PER_WEEK = 0.75;
+const SAFE_GAIN_KG_PER_WEEK = 0.4;
+const TRAINING_DAY_KCAL = 80;
+
+function getTrainingDayBoost(trainingDays?: number): number {
+  if (!trainingDays || trainingDays <= 0) return 0;
+  return Math.round((trainingDays * TRAINING_DAY_KCAL) / 7);
+}
+
+function getTargetDailyAdjustment(input: OnboardingInput): number | null {
+  if (!input.targetWeightKg || !input.weeksTarget || input.weeksTarget <= 0) return null;
+
+  const deltaKg = input.targetWeightKg - input.weightKg;
+  const weeks = input.weeksTarget;
+
+  if ((input.goal === "fat_loss" || input.goal === "recomp") && deltaKg >= 0) return 0;
+  if (input.goal === "muscle_gain" && deltaKg <= 0) return 0;
+  if (input.goal === "maintenance" || input.goal === "performance") return 0;
+
+  let weeklyChange = deltaKg / weeks;
+
+  if (input.goal === "fat_loss" || input.goal === "recomp") {
+    weeklyChange = Math.max(weeklyChange, -SAFE_LOSS_KG_PER_WEEK);
+    weeklyChange = Math.min(weeklyChange, 0);
+  } else if (input.goal === "muscle_gain") {
+    weeklyChange = Math.min(weeklyChange, SAFE_GAIN_KG_PER_WEEK);
+    weeklyChange = Math.max(weeklyChange, 0);
+  }
+
+  return Math.round((weeklyChange * KCAL_PER_KG) / 7);
 }
 
 function convertWorkout(workout: Workout): UserWorkout {

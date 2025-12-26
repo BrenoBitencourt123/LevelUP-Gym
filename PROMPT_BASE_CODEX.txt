@@ -1,0 +1,5 @@
+LEIA PRIMEIRO: AI_CONSTITUTION.md, APP_BLUEPRINT.md, COPY_STYLE.md e DONE_CHECKLIST.md.
+NÃO altere aparência/tema/layout. Não adicione dependências.
+Trabalhe em etapas pequenas (máx 5 arquivos por etapa).
+Ao final de cada etapa, atualize CODEx_PROGRESS.md com: resumo + arquivos alterados + como testar visualmente.
+Não finalize sem marcar DONE_CHECKLIST.md como OK.

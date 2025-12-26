@@ -9,12 +9,14 @@ interface Goal {
   completed?: boolean;
   explainKey?: EducationKey;
   canToggle?: boolean;
+  canSelect?: boolean;
 }
 
 interface GoalsSectionProps {
   goals: Goal[];
   onExplain?: (key: EducationKey) => void;
   onToggle?: (goalId: string) => void;
+  onSelect?: (goalId: string) => void;
 }
 
 const iconMap = {
@@ -23,7 +25,7 @@ const iconMap = {
   weight: Scale,
 };
 
-const GoalsSection = ({ goals, onExplain, onToggle }: GoalsSectionProps) => {
+const GoalsSection = ({ goals, onExplain, onToggle, onSelect }: GoalsSectionProps) => {
   const completedCount = goals.filter((goal) => goal.completed).length;
   const progress = goals.length > 0 ? (completedCount / goals.length) * 100 : 0;
 
@@ -53,15 +55,18 @@ const GoalsSection = ({ goals, onExplain, onToggle }: GoalsSectionProps) => {
         {goals.map((goal) => {
           const Icon = iconMap[goal.icon];
           const canToggle = Boolean(goal.canToggle && onToggle);
+          const canSelect = Boolean(goal.canSelect && onSelect);
           return (
             <div
               key={goal.id}
               className={`goal-item group ${
                 goal.completed ? "opacity-60" : "hover:bg-muted/30"
-              } ${canToggle ? "cursor-pointer" : ""}`}
+              } ${canToggle || canSelect ? "cursor-pointer" : ""}`}
               onClick={() => {
                 if (canToggle && onToggle) {
                   onToggle(goal.id);
+                } else if (canSelect && onSelect) {
+                  onSelect(goal.id);
                 }
               }}
             >

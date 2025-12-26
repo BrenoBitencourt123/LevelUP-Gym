@@ -196,6 +196,8 @@ const Onboarding = () => {
       weightKg: weightValue,
       activityLevel,
       trainingDays: daysValue,
+      targetWeightKg: needsTargetWeight ? weightTargetValue : weightValue,
+      weeksTarget: weeksTargetValue,
     };
 
     const targets = calculateNutritionTargets(input);

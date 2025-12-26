@@ -13,14 +13,16 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const onboardingComplete = isOnboardingComplete();
   const isOnboardingRoute = location.pathname.startsWith('/onboarding');
   const isObjectiveCompletionRoute = location.pathname.startsWith('/objetivo/concluido');
+  const isObjectiveSelectionRoute = location.pathname === '/objetivo';
   const activeObjective = getActiveObjective();
+  const hasObjective = hasActiveObjective();
 
   // Sem Firebase configurado, ainda exigimos login (mostrará aviso no login)
   if (!isConfigured) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Mostra loading enquanto verifica autenticaÇõÇœo
+  // Mostra loading enquanto verifica autenticação
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -32,7 +34,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Redireciona para login se nÇœo autenticado
+  // Redireciona para login se não autenticado
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -44,6 +46,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (onboardingComplete) {
     if (activeObjective?.status === "concluido" && !activeObjective.rewardClaimed && !isObjectiveCompletionRoute) {
       return <Navigate to="/objetivo/concluido" replace />;
+    }
+
+    if (!hasObjective && !isObjectiveSelectionRoute) {
+      return <Navigate to="/objetivo" replace />;
     }
   }
 

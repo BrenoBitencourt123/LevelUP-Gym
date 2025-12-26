@@ -1,3 +1,6 @@
+import { getFoodById } from "@/data/foods";
+import { workouts as defaultWorkouts, type Workout, type Exercise, type SetData } from "@/data/workouts";
+
 // Utilitários de persistência localStorage
 
 export function load<T>(key: string, fallback: T): T {
@@ -342,9 +345,12 @@ export function saveNutritionDiet(diet: NutritionDiet): void {
   save(STORAGE_KEYS.NUTRITION_DIET, diet);
 }
 
+function formatDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function getDateKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return formatDateKey(new Date());
 }
 
 export function getNutritionToday(): NutritionToday {
@@ -604,9 +610,28 @@ export function isMealComplete(mealId: string): boolean {
 
 // Calcula totais planejados (dieta) para uma refeição
 export function getPlannedTotals(): { kcal: number; p: number; c: number; g: number } {
-  // Import circular - precisamos acessar foods de outra forma
-  // Esta função será implementada no componente
-  return { kcal: 0, p: 0, c: 0, g: 0 };
+  const today = getNutritionToday();
+  let kcal = 0, p = 0, c = 0, g = 0;
+
+  for (const meal of today.meals) {
+    for (const entry of meal.entries) {
+      if (!entry.planned) continue;
+      const food = getFoodById(entry.foodId);
+      if (!food) continue;
+      const fator = entry.quantidade / food.porcaoBase;
+      kcal += food.kcal * fator;
+      p += food.p * fator;
+      c += food.c * fator;
+      g += food.g * fator;
+    }
+  }
+
+  return {
+    kcal: Math.round(kcal),
+    p: Math.round(p),
+    c: Math.round(c),
+    g: Math.round(g),
+  };
 }
 
 // ======= NUTRITION COMPLETION =======
@@ -845,23 +870,23 @@ export function formatRelativeDate(timestamp: string): string {
 // Obtém o último treino de um workout específico
 export function getLastWorkoutDate(workoutId: string): string | null {
   const history = getExerciseHistory();
-  
-  // Procura qualquer exercício deste workout
+
+  let latest: string | null = null;
   for (const exerciseId in history) {
     const snapshots = history[exerciseId];
     for (const snapshot of snapshots) {
-      if (snapshot.workoutId === workoutId) {
-        return snapshot.timestamp;
+      if (snapshot.workoutId !== workoutId) continue;
+      if (!latest || new Date(snapshot.timestamp) > new Date(latest)) {
+        latest = snapshot.timestamp;
       }
     }
   }
-  
-  return null;
+
+  return latest;
 }
 
 // ======= USER WORKOUT PLAN =======
 
-import { workouts as defaultWorkouts, type Workout, type Exercise, type SetData } from "@/data/workouts";
 
 export interface UserExercise {
   id: string;
@@ -1345,6 +1370,7 @@ export function getConsistency(days: number): number {
   const workouts = getWorkoutsInPeriod(days);
   // Considera 4 treinos por semana como 100%
   const expectedWorkouts = Math.round((days / 7) * 4);
+  if (expectedWorkouts <= 0) return 0;
   return Math.min(Math.round((workouts / expectedWorkouts) * 100), 100);
 }
 
@@ -1396,12 +1422,36 @@ export function saveNutritionLog(log: NutritionDailyLog): void {
 
 // Consolidar nutrição do dia atual e salvar log
 export function consolidateNutritionToday(): NutritionDailyLog | null {
-  // Importar foods dinamicamente para evitar circular dependency
   const today = getNutritionToday();
-  
-  // Calcular totais consumidos (precisamos do foods)
-  // Esta função será chamada do componente que tem acesso ao foods
-  return null;
+  let totalKcal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+
+  for (const meal of today.meals) {
+    for (const entry of meal.entries) {
+      if (!entry.consumed) continue;
+      const food = getFoodById(entry.foodId);
+      if (!food) continue;
+      const multiplier = entry.quantidade / food.porcaoBase;
+      totalKcal += food.kcal * multiplier;
+      totalProtein += food.p * multiplier;
+      totalCarbs += food.c * multiplier;
+      totalFat += food.g * multiplier;
+    }
+  }
+
+  if (totalKcal <= 0 && totalProtein <= 0 && totalCarbs <= 0 && totalFat <= 0) {
+    return null;
+  }
+
+  const log: NutritionDailyLog = {
+    dateKey: getDateKey(),
+    kcal: Math.round(totalKcal),
+    protein: Math.round(totalProtein),
+    carbs: Math.round(totalCarbs),
+    fat: Math.round(totalFat),
+  };
+
+  saveNutritionLog(log);
+  return log;
 }
 
 // Dados para gráfico de nutrição
@@ -1424,7 +1474,7 @@ export function getNutritionChartData(days: number): NutritionChartData[] {
   
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
-  const cutoffKey = cutoff.toISOString().split("T")[0];
+  const cutoffKey = formatDateKey(cutoff);
   
   return logs
     .filter(l => l.dateKey >= cutoffKey)

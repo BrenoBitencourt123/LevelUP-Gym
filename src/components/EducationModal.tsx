@@ -22,7 +22,7 @@ const EducationModal = ({ open, onClose, contentKey }: EducationModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="bg-card border-border/50 max-w-sm mx-4">
+      <DialogContent hideClose className="bg-card border-border/50 max-w-sm mx-4">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
