@@ -16,6 +16,8 @@ import {
   getProgressionSuggestion,
   saveProgressionSuggestion,
   getPreferredLoadKg,
+  checkNutritionQuestStatus,
+  isNutritionCompletedToday,
 } from "@/lib/storage";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -72,7 +74,7 @@ const playRestBeep = () => {
       context.close();
     };
   } catch {
-    // Best-effort
+    // best-effort
   }
 };
 
@@ -104,7 +106,7 @@ const ExerciseLogging = () => {
   const [isRestModalOpen, setIsRestModalOpen] = useState(false);
   const [autoRestEnabled, setAutoRestEnabled] = useState(true);
 
-  // RIR modal (somente séries válidas / work sets)
+  // RIR modal (somente work sets)
   const [pendingRir, setPendingRir] = useState<PendingRir | null>(null);
   const [showRirHelp, setShowRirHelp] = useState(false);
 
@@ -264,18 +266,27 @@ const ExerciseLogging = () => {
   const hasActiveRestTimer = restTimer?.isRunning && remainingMs > 0;
   const restTimerLabel = hasActiveRestTimer ? formatRestTime(remainingMs) : null;
 
+  // ✅ Label do botão: "Timer" → vira "01:58" se o timer ativo for daquele card
+  const getTimerButtonLabel = (source: "feeder" | "work") => {
+    if (hasActiveRestTimer && restTimer?.source === source && restTimerLabel) {
+      return restTimerLabel;
+    }
+    return "Timer";
+  };
+
   const handleOpenRestFromCard = (source: "feeder" | "work") => {
     if (!exercise) return;
 
-    // Se não tem timer ativo, inicia um novo (padrão)
-    if (!hasActiveRestTimer) {
-      startRestTimer(exercise.descansoSeg, "Descanso", source);
+    if (hasActiveRestTimer) {
+      openRestModal();
+      return;
     }
 
+    startRestTimer(exercise.descansoSeg, "Descanso", source);
     openRestModal();
   };
 
-  // Handlers for feeder sets
+  // Handlers feeder/work sets
   const updateFeederSet = (index: number, field: keyof SetProgress, value: number | boolean | null) => {
     setFeederSets((prev) => {
       const updated = [...prev];
@@ -284,7 +295,6 @@ const ExerciseLogging = () => {
     });
   };
 
-  // Handlers for work sets
   const updateWorkSet = (index: number, field: keyof SetProgress, value: number | boolean | null) => {
     setWorkSets((prev) => {
       const updated = [...prev];
@@ -328,7 +338,7 @@ const ExerciseLogging = () => {
     });
   };
 
-  // Feeder: mantém toggle direto (sem modal de RIR)
+  // Feeder: toggle direto
   const handleFeederToggleDone = (index: number, newDone: boolean) => {
     updateFeederSet(index, "done", newDone);
 
@@ -362,19 +372,20 @@ const ExerciseLogging = () => {
     updateWorkSet(idx, "rir", value);
     updateWorkSet(idx, "done", true);
 
+    const label = pendingRir.setLabel;
     setPendingRir(null);
 
     if (exercise && autoRestEnabled) {
-      startRestTimer(exercise.descansoSeg, pendingRir.setLabel, "work");
+      startRestTimer(exercise.descansoSeg, label, "work");
       setIsRestModalOpen(true);
     }
   };
 
-  // Check for suggestion banner
+  // suggestion banner
   useEffect(() => {
     if (!exercise) return;
 
-    const repsRangeMatch = exercise.repsRange.match(/(\d+)\s*[?-]\s*(\d+)/);
+    const repsRangeMatch = exercise.repsRange.match(/(\d+)\s*[–-]\s*(\d+)/);
     if (!repsRangeMatch) return;
 
     const upperLimit = parseInt(repsRangeMatch[2]);
@@ -415,7 +426,6 @@ const ExerciseLogging = () => {
     );
   }
 
-  const restDurationText = `Descanso: ${formatRestLabel(exercise.descansoSeg)}`;
   const lastPerformance = getLastExercisePerformance(exercicioId || "");
   const progression = getProgressionSuggestion(exercicioId || "", exercise.repsRange);
 
@@ -460,7 +470,7 @@ const ExerciseLogging = () => {
           </button>
         </div>
 
-        {/* Progression Card (legacy) */}
+        {/* Progression Card */}
         <div className="card-glass p-4 mb-4">
           <div className="flex items-start justify-between gap-4 mb-3">
             <div className="flex-1">
@@ -559,24 +569,19 @@ const ExerciseLogging = () => {
         {/* Feeder Set Card */}
         {feederSets.length > 0 && (
           <div className="card-glass p-4 mb-4">
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Série Feeder</h2>
+            {/* ✅ Timer no canto direito (substitui “Descanso 2min”) */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-lg font-semibold text-foreground">Série Feeder</h2>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenRestFromCard("feeder")}
-                  className="mt-1 inline-flex items-center gap-2 text-sm text-primary/90 hover:text-primary"
-                  title="Abrir timer de descanso"
-                >
-                  <Clock3 className="w-4 h-4" />
-                  <span className="font-medium">{restDurationText}</span>
-                </button>
-              </div>
-
-              {hasActiveRestTimer && restTimer?.source === "feeder" && restTimerLabel && (
-                <span className="text-sm font-semibold text-primary tabular-nums">{restTimerLabel}</span>
-              )}
+              <button
+                type="button"
+                onClick={() => handleOpenRestFromCard("feeder")}
+                className="inline-flex items-center gap-2 text-sm text-primary/90 hover:text-primary tabular-nums whitespace-nowrap"
+                title="Abrir timer de descanso"
+              >
+                <Clock3 className="w-4 h-4" />
+                <span className="font-medium">{getTimerButtonLabel("feeder")}</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
@@ -608,24 +613,19 @@ const ExerciseLogging = () => {
 
         {/* Valid Sets Card */}
         <div className="card-glass p-4 mb-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Séries Válidas</h2>
+          {/* ✅ Timer no canto direito (substitui “Descanso 2min”) */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h2 className="text-lg font-semibold text-foreground">Séries Válidas</h2>
 
-              <button
-                type="button"
-                onClick={() => handleOpenRestFromCard("work")}
-                className="mt-1 inline-flex items-center gap-2 text-sm text-primary/90 hover:text-primary"
-                title="Abrir timer de descanso"
-              >
-                <Clock3 className="w-4 h-4" />
-                <span className="font-medium">{restDurationText}</span>
-              </button>
-            </div>
-
-            {hasActiveRestTimer && restTimer?.source === "work" && restTimerLabel && (
-              <span className="text-sm font-semibold text-primary tabular-nums">{restTimerLabel}</span>
-            )}
+            <button
+              type="button"
+              onClick={() => handleOpenRestFromCard("work")}
+              className="inline-flex items-center gap-2 text-sm text-primary/90 hover:text-primary tabular-nums whitespace-nowrap"
+              title="Abrir timer de descanso"
+            >
+              <Clock3 className="w-4 h-4" />
+              <span className="font-medium">{getTimerButtonLabel("work")}</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
@@ -744,7 +744,8 @@ const ExerciseLogging = () => {
           <SheetHeader className="mb-4">
             <SheetTitle>Timer</SheetTitle>
             <SheetDescription>
-              Descanso • {restTimer?.exerciseName || exercise?.nome || "Próxima série"}
+              Descanso: {formatRestLabel(exercise.descansoSeg)} •{" "}
+              {restTimer?.exerciseName || exercise?.nome || "Próxima série"}
             </SheetDescription>
           </SheetHeader>
 
@@ -800,7 +801,6 @@ const ExerciseLogging = () => {
         </div>
       </div>
 
-      {/* Bottom Nav */}
       <BottomNav />
 
       {educationKey && (

@@ -1,10 +1,14 @@
-import { Check, Trash2 } from "lucide-react";
 import React from "react";
+import { Check, Clock3, Trash2 } from "lucide-react";
 
 type Props = {
   setNumber: number;
   kg: number;
   reps: number;
+
+  // ✅ agora é opcional (se não mandar, não renderiza timer na linha)
+  rest?: string;
+
   done: boolean;
   rir?: number | null;
   disabled?: boolean;
@@ -18,6 +22,9 @@ type Props = {
   onDoneChange?: (done: boolean) => void;
   onToggleDone?: (done: boolean) => void;
 
+  // ✅ opcional
+  onStartRest?: () => void;
+
   onRemove?: () => void;
 };
 
@@ -30,6 +37,7 @@ const SetRow = ({
   setNumber,
   kg,
   reps,
+  rest,
   done,
   rir = null,
   disabled = false,
@@ -38,6 +46,7 @@ const SetRow = ({
   onRepsChange,
   onDoneChange,
   onToggleDone,
+  onStartRest,
   onRemove,
 }: Props) => {
   const emitDone = (next: boolean) => {
@@ -52,6 +61,8 @@ const SetRow = ({
   const stop = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
+
+  const showRestInline = Boolean(rest && onStartRest);
 
   return (
     <div
@@ -131,19 +142,42 @@ const SetRow = ({
         />
       </div>
 
-      {/* “Reps a mais” (RIR) */}
-      <div className="flex-1 flex justify-end">
-        {done && rir !== null && rir !== undefined ? (
-          <span
-            className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium tabular-nums"
-            title="Quantas repetições você conseguiria fazer a mais"
+      {/* ✅ Descanso inline (só aparece se você realmente quiser usar em algum lugar) */}
+      {showRestInline && (
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              stop(e);
+              onStartRest?.();
+            }}
+            className="w-full h-9 rounded-lg px-3 flex items-center justify-between gap-2 bg-secondary/20 border border-border/40 hover:bg-secondary/30 transition-colors"
+            title="Abrir timer de descanso"
           >
-            +{rir}
+            <span className="text-xs text-muted-foreground truncate">{rest}</span>
+            <span className="inline-flex items-center gap-1.5 text-primary">
+              <Clock3 className="w-4 h-4" />
+              <span className="text-xs font-medium">Timer</span>
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Badge “Reps a mais” */}
+      <div className={`flex ${showRestInline ? "w-[64px]" : "flex-1"} justify-end min-w-0`}>
+        {done ? (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium tabular-nums ${
+              rir !== null && rir !== undefined
+                ? "bg-primary/10 text-primary"
+                : "bg-secondary/20 text-muted-foreground"
+            }`}
+            title="Repetições que sobraram"
+          >
+            {rir !== null && rir !== undefined ? `+${rir}` : "+—"}
           </span>
-        ) : done ? (
-          <span className="text-[11px] text-muted-foreground/70 tabular-nums">+—</span>
         ) : (
-          <span className="text-[11px] text-muted-foreground/60 tabular-nums"></span>
+          <span className="text-[11px] text-muted-foreground/70 tabular-nums" />
         )}
       </div>
 

@@ -1,10 +1,12 @@
+// src/App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
 import Index from "./pages/Index";
 import Treino from "./pages/Treino";
 import WorkoutDetail from "./pages/WorkoutDetail";
@@ -27,6 +29,10 @@ import ObjectiveCompletion from "./pages/ObjectiveCompletion";
 import ObjectiveOnboarding from "./pages/ObjectiveOnboarding";
 import Glossario from "./pages/Glossario";
 
+// ✅ NOVO: tela "Hevy-like" (treino em andamento)
+// Ajuste o caminho se seu arquivo estiver em outro lugar.
+import ActiveWorkout from "./pages/ActiveWorkout";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,27 +45,182 @@ const App = () => (
           <Routes>
             {/* Public route */}
             <Route path="/login" element={<Login />} />
-            
+
             {/* Protected routes */}
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            <Route path="/objetivo" element={<ProtectedRoute><ObjectiveOnboarding /></ProtectedRoute>} />
-            <Route path="/objetivo/concluido" element={<ProtectedRoute><ObjectiveCompletion /></ProtectedRoute>} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/treino" element={<ProtectedRoute><Treino /></ProtectedRoute>} />
-            <Route path="/treino/ajustar" element={<ProtectedRoute><AjustarPlano /></ProtectedRoute>} />
-            <Route path="/treino/:treinoId" element={<ProtectedRoute><WorkoutDetail /></ProtectedRoute>} />
-            <Route path="/treino/:treinoId/:exercicioId" element={<ProtectedRoute><ExerciseLogging /></ProtectedRoute>} />
-            <Route path="/treino/:treinoId/resumo" element={<ProtectedRoute><WorkoutSummary /></ProtectedRoute>} />
-            <Route path="/nutricao" element={<ProtectedRoute><Nutricao /></ProtectedRoute>} />
-            <Route path="/nutricao/criar-dieta" element={<ProtectedRoute><CriarDieta /></ProtectedRoute>} />
-            <Route path="/nutricao/adicionar-alimento" element={<ProtectedRoute><AdicionarAlimento /></ProtectedRoute>} />
-            <Route path="/nutricao/resumo" element={<ProtectedRoute><NutritionSummary /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/conquistas" element={<ProtectedRoute><Conquistas /></ProtectedRoute>} />
-            <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
-            <Route path="/progresso" element={<ProtectedRoute><Progresso /></ProtectedRoute>} />
-            <Route path="/descanso" element={<ProtectedRoute><RestDay /></ProtectedRoute>} />
-            <Route path="/glossario" element={<ProtectedRoute><Glossario /></ProtectedRoute>} />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/objetivo"
+              element={
+                <ProtectedRoute>
+                  <ObjectiveOnboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/objetivo/concluido"
+              element={
+                <ProtectedRoute>
+                  <ObjectiveCompletion />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/treino"
+              element={
+                <ProtectedRoute>
+                  <Treino />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/treino/ajustar"
+              element={
+                <ProtectedRoute>
+                  <AjustarPlano />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Detalhe do treino (lista de exercícios, botão Iniciar/Retomar) */}
+            <Route
+              path="/treino/:treinoId"
+              element={
+                <ProtectedRoute>
+                  <WorkoutDetail />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ NOVO: treino em andamento (estilo Hevy / Lovable) */}
+            <Route
+              path="/treino/:treinoId/ativo"
+              element={
+                <ProtectedRoute>
+                  <ActiveWorkout />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Seu logging por exercício (mantido) */}
+            <Route
+              path="/treino/:treinoId/:exercicioId"
+              element={
+                <ProtectedRoute>
+                  <ExerciseLogging />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Resumo do treino */}
+            <Route
+              path="/treino/:treinoId/resumo"
+              element={
+                <ProtectedRoute>
+                  <WorkoutSummary />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/nutricao"
+              element={
+                <ProtectedRoute>
+                  <Nutricao />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nutricao/criar-dieta"
+              element={
+                <ProtectedRoute>
+                  <CriarDieta />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nutricao/adicionar-alimento"
+              element={
+                <ProtectedRoute>
+                  <AdicionarAlimento />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nutricao/resumo"
+              element={
+                <ProtectedRoute>
+                  <NutritionSummary />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/conquistas"
+              element={
+                <ProtectedRoute>
+                  <Conquistas />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                <ProtectedRoute>
+                  <Perfil />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/progresso"
+              element={
+                <ProtectedRoute>
+                  <Progresso />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/descanso"
+              element={
+                <ProtectedRoute>
+                  <RestDay />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/glossario"
+              element={
+                <ProtectedRoute>
+                  <Glossario />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
