@@ -1,14 +1,14 @@
 // Centralized AppState type and migration logic
 
-import { 
+import {
   STORAGE_KEYS,
   load,
   save,
   DEFAULT_WORKOUT_SCHEDULE,
   type WorkoutSchedule,
-} from './storage';
+} from "./storage";
+import { getWeekStart } from "./weekUtils";
 import type { ObjectiveCampaignState } from "@/lib/objectives";
-import type { ProgressionState } from "@/engine/types";
 
 // ============= SET DATA TYPE =============
 
@@ -211,7 +211,6 @@ export interface AppState {
   updatedAt: number;
   profile: AppStateProfile;
   progression: AppStateProgression;
-  progressionByExerciseId: Record<string, ProgressionState>;
   plan: UserWorkoutPlan;
   workoutSchedule?: WorkoutSchedule;
   workoutHistory: WorkoutCompleted[];
@@ -224,6 +223,7 @@ export interface AppState {
   quests?: Quests;
   progressionSuggestions?: ProgressionSuggestions;
   weeklyCompletions?: WeeklyCompletions;
+  progressionByExerciseId?: Record<string, { lastCompletedAt?: number }>;
 }
 
 export type OnboardingGoal =
@@ -255,7 +255,7 @@ export interface OnboardingData {
   equipment: OnboardingEquipment;
 }
 
-const APP_STATE_KEY = 'levelup.appState';
+const APP_STATE_KEY = "levelup.appState";
 const APP_STATE_VERSION = 1;
 
 // Default values for NEW users (start at Level 1)
@@ -303,16 +303,16 @@ function migrateFromLegacy(): AppState {
   const weightHistory = load<WeightEntry[]>(STORAGE_KEYS.WEIGHT_HISTORY, []);
   const workoutsCompleted = load<WorkoutCompleted[]>(STORAGE_KEYS.WORKOUTS_COMPLETED, []);
   const treinoProgresso = load<TreinoProgresso>(STORAGE_KEYS.TREINO_PROGRESSO, {});
-  const quests = load<Quests>(STORAGE_KEYS.QUESTS, { treinoDoDiaDone: false, registrarAlimentacaoDone: false, registrarPesoDone: false });
+  const quests = load<Quests>(STORAGE_KEYS.QUESTS, {
+    treinoDoDiaDone: false,
+    registrarAlimentacaoDone: false,
+    registrarPesoDone: false,
+  });
   const progressionSuggestions = load<ProgressionSuggestions>(STORAGE_KEYS.PROGRESSION_SUGGESTIONS, {});
   const userPlan = load<UserWorkoutPlan | null>(STORAGE_KEYS.USER_WORKOUT_PLAN, null);
   const workoutSchedule = load<WorkoutSchedule>(
     STORAGE_KEYS.WORKOUT_SCHEDULE,
     DEFAULT_WORKOUT_SCHEDULE
-  );
-  const progressionByExerciseId = load<Record<string, ProgressionState>>(
-    STORAGE_KEYS.PROGRESSION_BY_EXERCISE,
-    {}
   );
 
   const dailyLogs: Record<string, NutritionToday> = {};
@@ -335,7 +335,7 @@ function migrateFromLegacy(): AppState {
     version: APP_STATE_VERSION,
     updatedAt: Date.now(),
     profile: {
-      displayName: 'Atleta',
+      displayName: "Atleta",
       photoURL: undefined,
       goal: undefined,
       onboardingComplete: hasLegacyData ? hasProgress : false,
@@ -363,8 +363,8 @@ function migrateFromLegacy(): AppState {
       dailyLogs,
     },
     bodyweight: {
-      entries: weightHistory.map(w => ({
-        date: w.timestamp.split('T')[0],
+      entries: weightHistory.map((w) => ({
+        date: w.timestamp.split("T")[0],
         weight: w.weight,
         updatedAt: new Date(w.timestamp).getTime(),
       })),
@@ -381,7 +381,6 @@ function migrateFromLegacy(): AppState {
     treinoProgresso,
     quests,
     progressionSuggestions,
-    progressionByExerciseId,
   };
 }
 
@@ -389,15 +388,11 @@ function migrateFromLegacy(): AppState {
 
 export function getLocalState(): AppState {
   const stored = load<AppState | null>(APP_STATE_KEY, null);
-  
+
   if (stored && stored.version) {
-    if (!stored.progressionByExerciseId) {
-      stored.progressionByExerciseId = {};
-      setLocalState(stored);
-    }
     return stored;
   }
-  
+
   const migrated = migrateFromLegacy();
   setLocalState(migrated);
   return migrated;
@@ -409,9 +404,6 @@ export function isOnboardingComplete(): boolean {
 }
 
 export function setLocalState(state: AppState): void {
-  if (!state.progressionByExerciseId) {
-    state.progressionByExerciseId = {};
-  }
   state.updatedAt = Date.now();
   save(APP_STATE_KEY, state);
   syncToLegacyKeys(state);
@@ -435,7 +427,7 @@ function syncToLegacyKeys(state: AppState): void {
     shields: state.progression.shields,
   };
   save(STORAGE_KEYS.PROFILE, profile);
-  
+
   const nutritionGoals: NutritionGoals = {
     kcalTarget: state.nutrition.targets.kcal,
     pTarget: state.nutrition.targets.protein,
@@ -443,30 +435,30 @@ function syncToLegacyKeys(state: AppState): void {
     gTarget: state.nutrition.targets.fats,
   };
   save(STORAGE_KEYS.NUTRITION_GOALS, nutritionGoals);
-  
+
   if (state.nutrition.dietPlan) {
     save(STORAGE_KEYS.NUTRITION_DIET, state.nutrition.dietPlan);
   }
-  
-  const todayKey = new Date().toISOString().split('T')[0];
+
+  const todayKey = new Date().toISOString().split("T")[0];
   if (state.nutrition.dailyLogs[todayKey]) {
     save(STORAGE_KEYS.NUTRITION_TODAY, state.nutrition.dailyLogs[todayKey]);
   }
-  
+
   save(STORAGE_KEYS.EXERCISE_HISTORY, state.exerciseHistory);
-  
-  const weightHistory: WeightEntry[] = state.bodyweight.entries.map(e => ({
+
+  const weightHistory: WeightEntry[] = state.bodyweight.entries.map((e) => ({
     weight: e.weight,
     timestamp: new Date(e.updatedAt).toISOString(),
   }));
   save(STORAGE_KEYS.WEIGHT_HISTORY, weightHistory);
-  
+
   save(STORAGE_KEYS.WORKOUTS_COMPLETED, state.workoutHistory);
   save(STORAGE_KEYS.USER_WORKOUT_PLAN, state.plan);
   if (state.workoutSchedule) {
     save(STORAGE_KEYS.WORKOUT_SCHEDULE, state.workoutSchedule);
   }
-  
+
   if (state.treinoProgresso) {
     save(STORAGE_KEYS.TREINO_PROGRESSO, state.treinoProgresso);
   }
@@ -476,7 +468,6 @@ function syncToLegacyKeys(state: AppState): void {
   if (state.progressionSuggestions) {
     save(STORAGE_KEYS.PROGRESSION_SUGGESTIONS, state.progressionSuggestions);
   }
-  save(STORAGE_KEYS.PROGRESSION_BY_EXERCISE, state.progressionByExerciseId || {});
 }
 
 export function touchAppState(): void {
@@ -493,26 +484,24 @@ export function exportAppState(): string {
 export function importAppState(jsonString: string): { success: boolean; error?: string } {
   try {
     const parsed = JSON.parse(jsonString);
-    
-    if (!parsed.version || typeof parsed.version !== 'number') {
-      return { success: false, error: 'Formato inválido: versão não encontrada' };
+
+    if (!parsed.version || typeof parsed.version !== "number") {
+      return { success: false, error: "Formato invalido: versao nao encontrada" };
     }
-    
+
     if (!parsed.progression || !parsed.nutrition) {
-      return { success: false, error: 'Formato inválido: dados incompletos' };
+      return { success: false, error: "Formato invalido: dados incompletos" };
     }
-    
+
     parsed.updatedAt = Date.now();
     setLocalState(parsed as AppState);
     return { success: true };
   } catch {
-    return { success: false, error: 'Erro ao processar JSON' };
+    return { success: false, error: "Erro ao processar JSON" };
   }
 }
 
 // ============= NEW USER INITIALIZATION =============
-
-import { getWeekStart } from './weekUtils';
 
 export function createNewUserState(): AppState {
   const defaultPlan: UserWorkoutPlan = {
@@ -524,7 +513,7 @@ export function createNewUserState(): AppState {
     version: APP_STATE_VERSION,
     updatedAt: Date.now(),
     profile: {
-      displayName: 'Atleta',
+      displayName: "Atleta",
       photoURL: undefined,
       goal: undefined,
       onboardingComplete: false,
@@ -537,7 +526,6 @@ export function createNewUserState(): AppState {
       shields: 0,
       multiplier: 1.0,
     },
-    progressionByExerciseId: {},
     plan: defaultPlan,
     workoutSchedule: DEFAULT_WORKOUT_SCHEDULE,
     workoutHistory: [],
@@ -638,7 +626,9 @@ export function isWorkoutCompletedThisWeek(workoutId: string, weekStart?: string
   return !!(state.weeklyCompletions?.[week]?.[workoutId]);
 }
 
-export function getWeeklyCompletions(weekStart?: string): Record<string, { completedAt: string; xpGained: number; setsCompleted: number; totalVolume: number }> {
+export function getWeeklyCompletions(
+  weekStart?: string
+): Record<string, { completedAt: string; xpGained: number; setsCompleted: number; totalVolume: number }> {
   const state = getLocalState();
   const week = weekStart || getWeekStart(new Date());
 
