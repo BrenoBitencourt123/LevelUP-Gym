@@ -8,6 +8,7 @@ import {
   type WorkoutSchedule,
 } from './storage';
 import type { ObjectiveCampaignState } from "@/lib/objectives";
+import type { ProgressionState } from "@/engine/types";
 
 // ============= SET DATA TYPE =============
 
@@ -210,6 +211,7 @@ export interface AppState {
   updatedAt: number;
   profile: AppStateProfile;
   progression: AppStateProgression;
+  progressionByExerciseId: Record<string, ProgressionState>;
   plan: UserWorkoutPlan;
   workoutSchedule?: WorkoutSchedule;
   workoutHistory: WorkoutCompleted[];
@@ -308,6 +310,10 @@ function migrateFromLegacy(): AppState {
     STORAGE_KEYS.WORKOUT_SCHEDULE,
     DEFAULT_WORKOUT_SCHEDULE
   );
+  const progressionByExerciseId = load<Record<string, ProgressionState>>(
+    STORAGE_KEYS.PROGRESSION_BY_EXERCISE,
+    {}
+  );
 
   const dailyLogs: Record<string, NutritionToday> = {};
   if (nutritionToday) {
@@ -375,6 +381,7 @@ function migrateFromLegacy(): AppState {
     treinoProgresso,
     quests,
     progressionSuggestions,
+    progressionByExerciseId,
   };
 }
 
@@ -384,6 +391,10 @@ export function getLocalState(): AppState {
   const stored = load<AppState | null>(APP_STATE_KEY, null);
   
   if (stored && stored.version) {
+    if (!stored.progressionByExerciseId) {
+      stored.progressionByExerciseId = {};
+      setLocalState(stored);
+    }
     return stored;
   }
   
@@ -398,6 +409,9 @@ export function isOnboardingComplete(): boolean {
 }
 
 export function setLocalState(state: AppState): void {
+  if (!state.progressionByExerciseId) {
+    state.progressionByExerciseId = {};
+  }
   state.updatedAt = Date.now();
   save(APP_STATE_KEY, state);
   syncToLegacyKeys(state);
@@ -462,6 +476,7 @@ function syncToLegacyKeys(state: AppState): void {
   if (state.progressionSuggestions) {
     save(STORAGE_KEYS.PROGRESSION_SUGGESTIONS, state.progressionSuggestions);
   }
+  save(STORAGE_KEYS.PROGRESSION_BY_EXERCISE, state.progressionByExerciseId || {});
 }
 
 export function touchAppState(): void {
@@ -522,6 +537,7 @@ export function createNewUserState(): AppState {
       shields: 0,
       multiplier: 1.0,
     },
+    progressionByExerciseId: {},
     plan: defaultPlan,
     workoutSchedule: DEFAULT_WORKOUT_SCHEDULE,
     workoutHistory: [],

@@ -2,11 +2,44 @@
 
 import { getRemoteState, setRemoteState, isFirebaseConfigured } from '@/services/firebase';
 import { getLocalState, setLocalState, createNewUserState, AppState } from './appState';
+import type { ProgressionState } from "@/engine/types";
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'pending' | 'offline' | 'error';
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SYNC_DEBOUNCE_MS = 800;
+
+function mergeProgressions(
+  local?: Record<string, ProgressionState>,
+  remote?: Record<string, ProgressionState>
+): Record<string, ProgressionState> {
+  const merged: Record<string, ProgressionState> = {};
+  const localMap = local ?? {};
+  const remoteMap = remote ?? {};
+
+  const keys = new Set([...Object.keys(localMap), ...Object.keys(remoteMap)]);
+
+  keys.forEach((id) => {
+    const l = localMap[id];
+    const r = remoteMap[id];
+
+    if (l && !r) {
+      merged[id] = l;
+      return;
+    }
+    if (!l && r) {
+      merged[id] = r;
+      return;
+    }
+    if (l && r) {
+      const lTime = l.lastCompletedAt ?? 0;
+      const rTime = r.lastCompletedAt ?? 0;
+      merged[id] = lTime >= rTime ? l : r;
+    }
+  });
+
+  return merged;
+}
 
 // Check if online
 export function isOnline(): boolean {
@@ -26,6 +59,10 @@ export async function syncState(uid: string): Promise<{ status: SyncStatus; mess
   try {
     const local = getLocalState();
     const remote = await getRemoteState(uid) as AppState | null;
+    const mergedProgression = mergeProgressions(
+      local.progressionByExerciseId,
+      remote?.progressionByExerciseId
+    );
     
     if (!remote) {
       // No remote state - this is a NEW user
@@ -36,8 +73,10 @@ export async function syncState(uid: string): Promise<{ status: SyncStatus; mess
         local.bodyweight.entries.length > 0;
       
       if (hasSignificantData) {
-        // Push existing local data
-        const success = await setRemoteState(uid, local);
+        // Push existing local data (com progressão mesclada)
+        const toPush = { ...local, progressionByExerciseId: mergedProgression };
+        setLocalState(toPush);
+        const success = await setRemoteState(uid, toPush);
         if (success) {
           return { status: 'synced', message: 'Dados enviados para a nuvem' };
         }
@@ -59,18 +98,25 @@ export async function syncState(uid: string): Promise<{ status: SyncStatus; mess
     
     if (localTime > remoteTime) {
       // Local is newer - push to remote
-      const success = await setRemoteState(uid, local);
+      const toPush = { ...local, progressionByExerciseId: mergedProgression };
+      setLocalState(toPush);
+      const success = await setRemoteState(uid, toPush);
       if (success) {
         return { status: 'synced', message: 'Dados atualizados na nuvem' };
       }
       return { status: 'error', message: 'Erro ao atualizar nuvem' };
     } else if (remoteTime > localTime) {
       // Remote is newer - pull to local
-      setLocalState(remote);
+      const mergedState = { ...remote, progressionByExerciseId: mergedProgression };
+      setLocalState(mergedState);
+      await setRemoteState(uid, mergedState);
       return { status: 'synced', message: 'Dados atualizados do servidor' };
     }
     
     // Same timestamp - already synced
+    const mergedState = { ...local, progressionByExerciseId: mergedProgression };
+    setLocalState(mergedState);
+    await setRemoteState(uid, mergedState);
     return { status: 'synced', message: 'Sincronizado' };
   } catch (error) {
     console.error('Sync error:', error);

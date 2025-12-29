@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import ObjectiveCompletion from "./pages/ObjectiveCompletion";
 import ObjectiveOnboarding from "./pages/ObjectiveOnboarding";
+import Glossario from "./pages/Glossario";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
             <Route path="/progresso" element={<ProtectedRoute><Progresso /></ProtectedRoute>} />
             <Route path="/descanso" element={<ProtectedRoute><RestDay /></ProtectedRoute>} />
+            <Route path="/glossario" element={<ProtectedRoute><Glossario /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

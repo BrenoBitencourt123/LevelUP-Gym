@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, Award, Flame, Dumbbell, TrendingUp, Scale, Edit2, ChevronRight, Cloud, CloudOff, RefreshCw, LogOut, Download, Upload, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Award, Flame, Dumbbell, TrendingUp, Scale, Edit2, ChevronRight, Cloud, CloudOff, RefreshCw, LogOut, Download, Upload, Check, Loader2, Info } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import AvatarFrame from "@/components/AvatarFrame";
@@ -278,6 +278,17 @@ const Perfil = () => {
             <div className="flex items-center gap-3">
               <Scale className="w-5 h-5 text-blue-500" />
               <span className="font-medium text-foreground">Histórico de peso</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </Link>
+
+          <Link
+            to="/glossario"
+            className="card-glass p-4 flex items-center justify-between hover:bg-card/80 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Info size={18} className="text-emerald-500" />
+              <span className="font-medium text-foreground">Glossário</span>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </Link>
